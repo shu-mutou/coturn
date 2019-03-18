@@ -29,6 +29,7 @@
  */
 
 #include "mainrelay.h"
+#include "dbdrivers/dbdriver.h"
 
 #if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
 #undef OPENSSL_VERSION_NUMBER
@@ -1656,6 +1657,15 @@ static void read_config_file(int argc, char **argv, int pass)
 	}
 }
 
+static int disconnect_database()
+{
+	const turn_dbdriver_t * dbd = get_dbdriver();
+	if (dbd && dbd->disconnect) {
+			dbd->disconnect();
+	}
+	return 0;
+}
+
 static int adminmain(int argc, char **argv)
 {
 	int c = 0;
@@ -1871,7 +1881,11 @@ static int adminmain(int argc, char **argv)
 		exit(-1);
 	}
 
-	return adminuser(user, realm, pwd, secret, origin, ct, &po, is_admin);
+	int result = adminuser(user, realm, pwd, secret, origin, ct, &po, is_admin);
+
+	disconnect_database();
+
+	return result;
 }
 
 static void print_features(unsigned long mfn)
@@ -2364,6 +2378,8 @@ int main(int argc, char **argv)
 	drop_privileges();
 
 	run_listener_server(&(turn_params.listener));
+
+	disconnect_database();
 
 	return 0;
 }
